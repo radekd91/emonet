@@ -162,7 +162,7 @@ class EmoNet(nn.Module):
         self.avg_pool_2 = nn.AvgPool2d(4)
         self.emo_fc_2 = nn.Sequential(nn.Linear(256, 128), nn.BatchNorm1d(128), nn.ReLU(inplace=True), nn.Linear(128, self.n_expression + n_reg))
 
-    def forward(self, x, reset_smoothing=False):
+    def forward(self, x, reset_smoothing=False, intermediate_features=False):
         
         #Resets the temporal smoothing
         if self.init_smoothing:
@@ -211,6 +211,8 @@ class EmoNet(nn.Module):
         final_features = self.avg_pool_2(final_features)
         batch_size = final_features.shape[0]
         final_features = final_features.view(batch_size, final_features.shape[1])
+        if intermediate_features:
+            emo_feat2 = final_features
         final_features = self.emo_fc_2(final_features)
         
         if self.temporal_smoothing:
@@ -219,7 +221,13 @@ class EmoNet(nn.Module):
                 self.temporal_state[:,-1,:] = final_features 
                 final_features = torch.sum(self.temporal_weights*self.temporal_state, dim=1)
 
-        return {'heatmap': tmp_out, 'expression': final_features[:,:-2], 'valence': final_features[:,-2], 'arousal':final_features[:,-1]}
+        res = {'heatmap': tmp_out, 'expression': final_features[:,:-2], 'valence': final_features[:,-2], 'arousal':final_features[:,-1]}
+
+        if intermediate_features:
+            res['emo_feat'] = emo_feat
+            res['emo_feat_2'] = emo_feat2
+
+        return res
 
   
     def eval(self):
