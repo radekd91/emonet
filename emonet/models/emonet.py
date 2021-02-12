@@ -231,6 +231,6 @@ class EmoNet(nn.Module):
 
   
     def eval(self):
-        
         for module in self.children():
             module.eval()
+        return self
