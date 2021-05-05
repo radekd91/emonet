@@ -144,7 +144,9 @@ class EmoNet(nn.Module):
         #Do not optimize the FAN
         for p in self.parameters():
             p.requires_grad = False
-
+        # remember FAN parameters
+        self.fan_modules = list(self.modules())
+        self.fan_parameters = list(self.parameters())
 
         if self.attention:
             n_in_features = 256*(num_modules+1) #Heatmap is applied hence no need to have it
@@ -161,6 +163,18 @@ class EmoNet(nn.Module):
         self.emo_net_2 = nn.Sequential(*self.emo_convs)
         self.avg_pool_2 = nn.AvgPool2d(4)
         self.emo_fc_2 = nn.Sequential(nn.Linear(256, 128), nn.BatchNorm1d(128), nn.ReLU(inplace=True), nn.Linear(128, self.n_expression + n_reg))
+
+        # Separate eomotion parameters from FAN parameters
+        self.emo_parameters = list(set(self.parameters()).difference(set(self.fan_parameters)))
+        self.emo_modules = list(set(self.modules()).difference(set(self.fan_modules)))
+
+
+    def reset_emo_parameters(self):
+        for module in self.emo_modules:
+            try:
+                module.reset_parameters()
+            except:
+                pass
 
     def forward(self, x, reset_smoothing=False, intermediate_features=False):
         
